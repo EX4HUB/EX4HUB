@@ -1,0 +1,955 @@
+--Create By N74
+-- Cr. SILENT AIM https://discord.gg/SXFr9QY5
+local MacLib = loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local placeId = game.PlaceId
+local gameName = "Unknown Game" -- ค่าตั้งต้น ถ้าดึงชื่อไม่ได้
+
+-- พยายามดึงชื่อเกม
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(placeId).Name
+end)
+
+local Window = MacLib:Window({
+	Title = "N74 HUB",
+	Subtitle = gameName .. " Create By N74",
+	Size = UDim2.fromOffset(868, 650),
+	DragStyle = 1,
+	DisabledWindowControls = {},
+	ShowUserInfo = true,
+	Keybind = Enum.KeyCode.RightControl,
+	AcrylicBlur = true,
+})
+
+-- 🔧 Global Settings
+_G.Skeleton = false
+_G.Box = false
+_G.Distance = false
+_G.ShowName = false
+_G.ShowHealthText = false
+_G.ShowTracer = false
+_G.Color = Color3.fromRGB(255, 128, 0)
+_G.TeamCheck = false
+_G.RefreshRate = 0.03
+
+-- 🚀 Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local ESP = {}
+
+local Player = game:GetService("Players")
+-- local LocalPlayer = Player.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInput = game:GetService("UserInputService")
+local Tween = game:GetService("TweenService")
+local Holding = false
+
+
+-- > Aim Bot Settings <
+_G.AimbotEnabled = false
+_G.TeamCheck = false
+_G.AimPart = "Head"
+_G.Sensitivity = 0.1
+
+-- > FOV CIRCLE SETTING <
+_G.CircleColor = Color3.fromRGB(255,255,255)
+_G.CircleTransparency = 0.7
+_G.CircleRadius = 80
+_G.CircleFilled = false
+_G.CircleVisible = false
+_G.CircleThickness = 0
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+FOVCircle.Radius = _G.CircleRadius
+FOVCircle.Filled = _G.CircleFilled
+FOVCircle.Color = _G.CircleColor
+FOVCircle.Visible = _G.CircleVisible
+FOVCircle.Transparency = _G.CircleTransparency
+FOVCircle.Thickness = _G.CircleThickness
+
+-- // SERVICES
+local players = game:GetService("Players")
+local localPlayer = players.LocalPlayer
+local camera = workspace.CurrentCamera
+local inputService = game:GetService("UserInputService")
+
+-- // SILENT AIM TABLE
+local silentAim = {
+	Enabled = false,
+	HitParts = {"Head", "Torso"},
+	CurrentIndex = 1,
+	Fov = 1000,
+}
+
+-- // FIND TORSO SUPPORT (R15)
+local function findTorsoPart(character)
+	return character:FindFirstChild("UpperTorso") or character:FindFirstChild("LowerTorso")
+end
+
+-- // GET TARGET FUNCTION
+local function getTarget()
+	local closest, closestHitpart = silentAim.Fov, nil
+	local selectedHitPartName = silentAim.HitParts[silentAim.CurrentIndex]
+
+	for _, player in players:GetPlayers() do
+		if player == localPlayer or player.Team == localPlayer.Team then continue end
+		if not player:FindFirstChild("NRPBS") or not player.Character then continue end
+		if player.NRPBS.Health.Value <= 0 then continue end
+
+		local hitPart
+		if selectedHitPartName == "Torso" then
+			hitPart = findTorsoPart(player.Character)
+		else
+			hitPart = player.Character:FindFirstChild(selectedHitPartName)
+		end
+
+		if not hitPart then continue end
+
+		local screenPosition, onScreen = camera:WorldToViewportPoint(hitPart.Position)
+		if screenPosition.Z < 0 or not onScreen then continue end
+
+		local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - camera.ViewportSize / 2).Magnitude
+		if distance < closest then
+			closest = distance
+			closestHitpart = hitPart
+		end
+	end
+
+	return closestHitpart
+end
+
+-- // METAMETHOD HOOK
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
+    if silentAim.Enabled 
+        and self == camera 
+        and index == "CoordinateFrame"
+        and string.match(debug.info(3, "s"), "Client.Functions.Weapons")
+        and debug.info(3, "n") ~= "RotCamera" then
+
+        local hitPart = getTarget()
+        if hitPart then
+            return CFrame.new(camera.CFrame.Position, hitPart.Position)
+        end
+    end
+    return oldIndex(self, index)
+end))
+
+local globalSettings = {
+	UIBlurToggle = Window:GlobalSetting({
+		Name = "UI Blur",
+		Default = Window:GetAcrylicBlurState(),
+		Callback = function(bool)
+			Window:SetAcrylicBlurState(bool)
+			Window:Notify({
+				Title = Window.Settings.Title,
+				Description = (bool and "Enabled" or "Disabled") .. " UI Blur",
+				Lifetime = 5
+			})
+		end,
+	}),
+	NotificationToggler = Window:GlobalSetting({
+		Name = "Notifications",
+		Default = Window:GetNotificationsState(),
+		Callback = function(bool)
+			Window:SetNotificationsState(bool)
+			Window:Notify({
+				Title = Window.Settings.Title,
+				Description = (bool and "Enabled" or "Disabled") .. " Notifications",
+				Lifetime = 5
+			})
+		end,
+	}),
+	ShowUserInfo = Window:GlobalSetting({
+		Name = "Show User Info",
+		Default = Window:GetUserInfoState(),
+		Callback = function(bool)
+			Window:SetUserInfoState(bool)
+			Window:Notify({
+				Title = Window.Settings.Title,
+				Description = (bool and "Showing" or "Redacted") .. " User Info",
+				Lifetime = 5
+			})
+		end,
+	})
+}
+
+local tabGroups = {
+	TabGroup1 = Window:TabGroup()
+}
+
+local tabs = {
+	Main = tabGroups.TabGroup1:Tab({ Name = "Combat", Image = "rbxassetid://137661673258910" }),
+	Main2 = tabGroups.TabGroup1:Tab({ Name = "Combat", Image = "rbxassetid://137661673258910" }),
+	Settings = tabGroups.TabGroup1:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
+}
+
+local sections = {
+	MainSection1 = tabs.Main:Section({ Side = "Left" }),
+	MainSection2 = tabs.Main:Section({ Side = "Right" }),
+	MainSection3 = tabs.Main2:Section({ Side = "Left" }),
+}
+
+-- Aimbot
+
+sections.MainSection1:Header({
+	Name = "Aimbot"
+})
+
+sections.MainSection1:Toggle({
+    Name = "Aimbot",
+    Default = false,
+    Callback = function(value)
+        _G.AimbotEnabled = value
+    end,
+}, "AimbotToggle")
+
+-- // UI: TOGGLE
+sections.MainSection1:Toggle({
+	Name = "Enable Silent Aim",
+	Default = silentAim.Enabled,
+	Callback = function(value)
+		silentAim.Enabled = value
+		Window:Notify({
+			Title = "Silent Aim",
+			Description = (value and "Enabled" or "Disabled") .. " Silent Aim",
+			Lifetime = 4,
+		})
+	end,
+}, "SilentAimToggle")
+
+sections.MainSection1:Toggle({
+    Name = "Aimbot FOV",
+    Default = false,
+    Callback = function(value)
+        _G.CircleVisible = value
+    end,
+}, "AimbotFOVToggle")
+
+sections.MainSection1:Colorpicker({
+	Name = "Colorpicker",
+	Default = Color3.fromRGB(0, 255, 255),
+	Callback = function(color)
+		_G.CircleColor = color
+	end,
+}, "Colorpickerds")
+
+local alphaColorPicker = sections.MainSection1:Colorpicker({
+	Name = "Transparency Colorpicker",
+	Default = Color3.fromRGB(255,0,0),
+	Alpha = 0,
+	Callback = function(color, alpha)
+		-- print("Color: ", color, " Alpha: ", alpha)
+	end,
+}, "TransparencyColorpicker")
+
+local fovrainbowActive
+local fovrainbowConnection
+local hue = 0
+
+sections.MainSection1:Toggle({
+	Name = "Rainbow",
+	Default = false,
+	Callback = function(value)
+		fovrainbowActive = value
+
+		if fovrainbowActive then
+			fovrainbowConnection = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
+				hue = (hue + deltaTime * 0.1) % 1
+				local rainbowColor = Color3.fromHSV(hue, 1, 1)
+				alphaColorPicker:SetColor(rainbowColor)
+				_G.CircleColor = rainbowColor
+			end)
+		elseif fovrainbowConnection then
+			fovrainbowConnection:Disconnect()
+			fovrainbowConnection = nil
+		end
+	end,
+}, "RainbowToggle")
+
+-- silentAim
+
+-- // UI: DROPDOWN
+sections.MainSection1:Dropdown({
+	Name = "Target Part",
+	Multi = false,
+	Required = true,
+	Options = silentAim.HitParts,
+	Default = silentAim.CurrentIndex,
+	Callback = function(Value)
+		for i, v in ipairs(silentAim.HitParts) do
+			if v == Value then
+				silentAim.CurrentIndex = i
+				break
+			end
+		end
+		Window:Notify({
+			Title = "Silent Aim",
+			Description = "Target Part set to: " .. Value,
+			Lifetime = 3
+		})
+	end,
+}, "TargetDropdown")
+
+sections.MainSection1:Keybind({
+	Name = "Switch Target Part (Keybind)",
+	Callback = function(binded)
+		-- เปลี่ยนเป้าหมายไปยังตัวถัดไป
+		silentAim.CurrentIndex = silentAim.CurrentIndex + 1
+		if silentAim.CurrentIndex > #silentAim.HitParts then
+			silentAim.CurrentIndex = 1
+		end
+
+		local newPart = silentAim.HitParts[silentAim.CurrentIndex]
+
+		Window:Notify({
+			Title = "Silent Aim",
+			Description = "Switched Target Part to: " .. newPart,
+			Lifetime = 3
+		})
+	end,
+	onBinded = function(bind)
+		Window:Notify({
+			Title = "Silent Aim",
+			Description = "Keybind set to: " .. tostring(bind.Name),
+			Lifetime = 3
+		})
+	end,
+}, "SwitchTargetBind")
+
+--
+sections.MainSection3:Header({
+	Name = "Outh"
+})
+
+
+sections.MainSection3:Toggle({
+    Name = "Fly",
+    Default = false,
+    Callback = function(value)
+        _G.FlyEnabled = value -- ควบคุมการเปิด/ปิดระบบบินจากภายนอก
+    end,
+}, "FlyToggle")
+
+-- CFrame Speed (Z) Improved implementation using RunService connection
+local UIS = game:GetService("UserInputService")
+local Multiplier = 0.5
+local speedActive = false
+local speedConnection
+sections.MainSection3:Button({
+	Name = "CFrame Speed (Z)",
+	Callback = function()
+        repeat wait() until game:IsLoaded() and LocalPlayer.Character
+        UIS.InputBegan:Connect(function(input)
+            if input.KeyCode == Enum.KeyCode.LeftBracket then
+                Multiplier = Multiplier + 0.01
+                print("Multiplier: ", Multiplier)
+                wait(0.2)
+                while UIS:IsKeyDown(Enum.KeyCode.LeftBracket) do
+                    wait()
+                    Multiplier = Multiplier + 0.01
+                    print("Multiplier: ", Multiplier)
+                end
+            end
+            if input.KeyCode == Enum.KeyCode.RightBracket then
+                Multiplier = Multiplier - 0.01
+                print("Multiplier: ", Multiplier)
+                wait(0.2)
+                while UIS:IsKeyDown(Enum.KeyCode.RightBracket) do
+                    wait()
+                    Multiplier = Multiplier - 0.01
+                    print("Multiplier: ", Multiplier)
+                end
+            end
+            if input.KeyCode == Enum.KeyCode.Z then
+                speedActive = not speedActive
+                if speedActive then
+                    speedConnection = RunService.Stepped:Connect(function()
+                        local character = LocalPlayer.Character
+                        if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+                            character.HumanoidRootPart.CFrame = character.HumanoidRootPart.CFrame + character.Humanoid.MoveDirection * Multiplier
+                        end
+                    end)
+                elseif speedConnection then
+                    speedConnection:Disconnect()
+                    speedConnection = nil
+                end
+            end
+        end)
+	end,
+})
+
+sections.MainSection3:Slider({
+	Name = "CFrame Speed ",
+	Default = 0,
+	Minimum = 0,
+	Maximum = 5,
+	DisplayMethod = "Percent",
+	Callback = function(Value)
+		Multiplier = Value  -- แก้ไขการอ้างอิงตัวแปรที่ไม่ถูกต้อง
+	end,
+}, "WalkspeedSlider")
+
+--ESP
+
+sections.MainSection2:Header({
+	Name = "ESP"
+})
+
+sections.MainSection2:Toggle({
+	Name = "EspSkeleton",
+	Default = false,
+	Callback = function(value)
+		_G.Skeleton = value
+	end,
+}, "EspSkeletonToggle")
+
+sections.MainSection2:Toggle({
+	Name = "EspBox",
+	Default = false,
+	Callback = function(value)
+		_G.Box = value
+	end,
+}, "EspBoxToggle")
+
+sections.MainSection2:Toggle({
+	Name = "Esp Distance",
+	Default = false,
+	Callback = function(value)
+		_G.Distance = value
+	end,
+}, "DistanceToggle")
+
+sections.MainSection2:Toggle({
+	Name = "Esp ShowName",
+	Default = false,
+	Callback = function(value)
+		_G.ShowName = value
+	end,
+}, "ShowNameToggle")
+
+sections.MainSection2:Toggle({
+	Name = "Esp ShowHealthText",
+	Default = false,
+	Callback = function(value)
+		_G.ShowHealthText = value
+	end,
+}, "ShowHealthTextToggle")
+
+sections.MainSection2:Toggle({
+	Name = "Esp ShowTracer",
+	Default = false,
+	Callback = function(value)
+		_G.ShowTracer = value
+	end,
+}, "ShowTracerToggle")
+
+sections.MainSection2:Toggle({
+	Name = "TeamCheck",
+	Default = false,
+	Callback = function(value)
+		_G.TeamCheck = value
+	end,
+}, "TeamCheckToggle")
+
+sections.MainSection2:Colorpicker({
+	Name = "Colorpicker",
+	Default = Color3.fromRGB(0, 255, 255),
+	Callback = function(color)
+		_G.Color = color
+	end,
+}, "Colorpicker")
+
+local alphaColorPicker = sections.MainSection2:Colorpicker({
+	Name = "Transparency Colorpicker",
+	Default = Color3.fromRGB(255,0,0),
+	Alpha = 0,
+	Callback = function(color, alpha)
+		-- print("Color: ", color, " Alpha: ", alpha)
+	end,
+}, "TransparencyColorpicker")
+
+local rainbowActive
+local rainbowConnection
+local hue = 0
+
+sections.MainSection2:Toggle({
+	Name = "Rainbow",
+	Default = false,
+	Callback = function(value)
+		rainbowActive = value
+
+		if rainbowActive then
+			rainbowConnection = game:GetService("RunService").RenderStepped:Connect(function(deltaTime)
+				hue = (hue + deltaTime * 0.1) % 1
+				local rainbowColor = Color3.fromHSV(hue, 1, 1)
+				alphaColorPicker:SetColor(rainbowColor)
+				_G.Color = rainbowColor
+			end)
+		elseif rainbowConnection then
+			rainbowConnection:Disconnect()
+			rainbowConnection = nil
+		end
+	end,
+}, "RainbowToggle")
+
+MacLib:SetFolder("Maclib")
+tabs.Settings:InsertConfigSection("Left")
+
+Window.onUnloaded(function()
+	print("Unloaded!")
+end)
+
+tabs.Main:Select()
+MacLib:LoadAutoLoadConfig()
+
+task.spawn(function()
+-- 🧱 Drawing Helpers
+local function newLine()
+    local line = Drawing.new("Line")
+    line.Thickness = 1
+    line.Transparency = 1
+    line.Visible = false
+    line.Color = _G.Color
+    return line
+end
+
+local function newText()
+    local txt = Drawing.new("Text")
+    txt.Size = 16
+    txt.Center = true
+    txt.Outline = true
+    txt.OutlineColor = Color3.new(0, 0, 0)
+    txt.Font = 2
+    txt.Color = _G.Color
+    txt.Visible = false
+    return txt
+end
+
+local function newBox()
+    local box = {}
+    for i = 1, 4 do
+        box[i] = newLine()
+    end
+    return box
+end
+
+local function toScreen(pos)
+    local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(screenPos.X, screenPos.Y), onScreen, screenPos.Z
+end
+
+local function getBones(character)
+    local isR15 = character:FindFirstChild("UpperTorso") ~= nil
+    if isR15 then
+        return {
+            {"Head", "UpperTorso"},
+            {"UpperTorso", "LowerTorso"},
+            {"UpperTorso", "LeftUpperArm"},
+            {"UpperTorso", "RightUpperArm"},
+            {"LeftUpperArm", "LeftLowerArm"},
+            {"RightUpperArm", "RightLowerArm"},
+            {"LeftLowerArm", "LeftHand"},
+            {"RightLowerArm", "RightHand"},
+            {"LowerTorso", "LeftUpperLeg"},
+            {"LowerTorso", "RightUpperLeg"},
+            {"LeftUpperLeg", "LeftLowerLeg"},
+            {"RightUpperLeg", "RightLowerLeg"},
+            {"LeftLowerLeg", "LeftFoot"},
+            {"RightLowerLeg", "RightFoot"},
+        }
+    else
+        return {
+            {"Head", "Torso"},
+            {"Torso", "Left Arm"},
+            {"Torso", "Right Arm"},
+            {"Torso", "Left Leg"},
+            {"Torso", "Right Leg"},
+        }
+    end
+end
+
+-- 🔄 Main ESP Update Loop
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if _G.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+        local char = player.Character
+        if not char then continue end
+
+        local rootPart = char:FindFirstChild("HumanoidRootPart")
+        if not rootPart then continue end
+
+        local pos, onScreen, distance = toScreen(rootPart.Position)
+
+        -- ✨ Create ESP objects if not exists
+        if not ESP[player] then
+            ESP[player] = {
+                Skeleton = {},
+                Box = newBox(),
+                Distance = newText(),
+                Name = newText(),
+                HealthText = newText(),
+                HealthBar = { Background = newLine(), Bar = newLine() },
+                Tracer = newLine()
+            }
+        end
+
+        -- 🦴 Skeleton
+        if _G.Skeleton then
+            local bones = getBones(char)
+            if #ESP[player].Skeleton ~= #bones then
+                for _, line in pairs(ESP[player].Skeleton) do if line then line:Remove() end end
+                ESP[player].Skeleton = {}
+                for _ = 1, #bones do table.insert(ESP[player].Skeleton, newLine()) end
+            end
+            for i, bone in ipairs(bones) do
+                local a = char:FindFirstChild(bone[1])
+                local b = char:FindFirstChild(bone[2])
+                local line = ESP[player].Skeleton[i]
+                if a and b then
+                    local aPos, aOnScreen = toScreen(a.Position)
+                    local bPos, bOnScreen = toScreen(b.Position)
+                    if aOnScreen and bOnScreen then
+                        line.From = aPos
+                        line.To = bPos
+                        line.Visible = true
+						line.Color = _G.Color -- ✅ อัปเดตสีตาม _G.Color
+                    else
+                        line.Visible = false
+                    end
+                else
+                    line.Visible = false
+                end
+            end
+        else
+            for _, line in pairs(ESP[player].Skeleton) do if line then line.Visible = false end end
+        end
+
+        -- 🔳 Box + HealthBar
+        local head = char:FindFirstChild("Head")
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if _G.Box and head and humanoid then
+            local headPos, hOnScreen = toScreen(head.Position + Vector3.new(0, 0.5, 0))
+            local footPos, fOnScreen = toScreen(rootPart.Position - Vector3.new(0, 3, 0))
+            local box = ESP[player].Box
+
+            if hOnScreen and fOnScreen then
+                local height = math.abs(headPos.Y - footPos.Y)
+                local width = height / 2
+                local topLeft = Vector2.new(headPos.X - width / 2, headPos.Y)
+                local topRight = Vector2.new(headPos.X + width / 2, headPos.Y)
+                local bottomLeft = Vector2.new(headPos.X - width / 2, headPos.Y + height)
+                local bottomRight = Vector2.new(headPos.X + width / 2, headPos.Y + height)
+
+                box[1].From, box[1].To = topLeft, topRight
+                box[2].From, box[2].To = topRight, bottomRight
+                box[3].From, box[3].To = bottomRight, bottomLeft
+                box[4].From, box[4].To = bottomLeft, topLeft
+                for _, line in pairs(box) do line.Visible, line.Color = true, _G.Color end
+
+                -- HealthBar
+                local NRPBS = player:FindFirstChild("NRPBS")
+                local hpPercent = 1
+                if NRPBS and NRPBS:FindFirstChild("Health") and NRPBS:FindFirstChild("MaxHealth") then
+                    local health = NRPBS.Health.Value
+                    local maxHealth = NRPBS.MaxHealth.Value
+                    hpPercent = math.clamp(health, 0, maxHealth) / maxHealth
+                end
+
+                local barHeight = height
+                local barWidth = 2
+                local x = headPos.X - width / 2 - 6
+                local y = headPos.Y
+
+                local bg = ESP[player].HealthBar.Background
+                local fg = ESP[player].HealthBar.Bar
+
+                bg.From = Vector2.new(x, y)
+                bg.To = Vector2.new(x, y + barHeight)
+                bg.Color = Color3.new(0, 0, 0)
+                bg.Thickness = barWidth
+                bg.Visible = true
+
+                fg.From = Vector2.new(x, y + (1 - hpPercent) * barHeight)
+                fg.To = Vector2.new(x, y + barHeight)
+                fg.Color = Color3.fromRGB(0, 255, 0)
+                fg.Thickness = barWidth
+                fg.Visible = true
+            else
+                for _, line in pairs(box) do line.Visible = false end
+                ESP[player].HealthBar.Background.Visible = false
+                ESP[player].HealthBar.Bar.Visible = false
+            end
+        else
+            for _, line in pairs(ESP[player].Box) do line.Visible = false end
+            ESP[player].HealthBar.Background.Visible = false
+            ESP[player].HealthBar.Bar.Visible = false
+        end
+
+        -- 📏 Distance
+        if _G.Distance and onScreen then
+            ESP[player].Distance.Position = Vector2.new(pos.X, pos.Y + 30)
+            ESP[player].Distance.Text = string.format("[%.1fm]", distance)
+            ESP[player].Distance.Visible = true
+			ESP[player].Distance.Color = _G.Color -- ✅ เพิ่มตรงนี้
+        else
+            ESP[player].Distance.Visible = false
+        end
+
+        -- 🧑 Name
+        if _G.ShowName and onScreen then
+            ESP[player].Name.Text = player.Name
+            ESP[player].Name.Position = Vector2.new(pos.X, pos.Y - 15)
+            ESP[player].Name.Visible = true
+			ESP[player].Name.Color = _G.Color -- ✅ เพิ่มตรงนี้
+        else
+            ESP[player].Name.Visible = false
+        end
+
+        -- ❤️ Health %
+        if _G.ShowHealthText and onScreen then
+            local NRPBS = player:FindFirstChild("NRPBS")
+            if NRPBS and NRPBS:FindFirstChild("Health") and NRPBS:FindFirstChild("MaxHealth") then
+                local health = NRPBS.Health.Value
+                local maxHealth = NRPBS.MaxHealth.Value
+                local percent = math.clamp(health, 0, maxHealth) / maxHealth * 100
+                ESP[player].HealthText.Text = string.format("%.0f%%", percent)
+                ESP[player].HealthText.Position = Vector2.new(pos.X, pos.Y + 45)
+                ESP[player].HealthText.Visible = true
+            else
+                ESP[player].HealthText.Visible = false
+            end
+        else
+            ESP[player].HealthText.Visible = false
+        end
+
+        -- 📍 Tracer
+        if _G.ShowTracer and onScreen then
+            local tracer = ESP[player].Tracer
+            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            tracer.To = pos
+            tracer.Color = _G.Color
+            tracer.Visible = true
+        else
+            ESP[player].Tracer.Visible = false
+        end
+    end
+end
+
+-- 🔁 Main Loop
+task.spawn(function()
+    while task.wait(_G.RefreshRate) do
+        pcall(updateESP)
+    end
+end)
+
+-- 🧼 Clear ESP on player leave
+Players.PlayerRemoving:Connect(function(player)
+    if ESP[player] then
+        for _, line in pairs(ESP[player].Skeleton or {}) do
+            if line then line:Remove() end
+        end
+        for _, line in pairs(ESP[player].Box or {}) do
+            if line then line:Remove() end
+        end
+        if ESP[player].Distance then ESP[player].Distance:Remove() end
+        if ESP[player].Name then ESP[player].Name:Remove() end
+        if ESP[player].HealthText then ESP[player].HealthText:Remove() end
+        if ESP[player].HealthBar then
+            if ESP[player].HealthBar.Background then ESP[player].HealthBar.Background:Remove() end
+            if ESP[player].HealthBar.Bar then ESP[player].HealthBar.Bar:Remove() end
+        end
+        if ESP[player].Tracer then ESP[player].Tracer:Remove() end
+        ESP[player] = nil
+    end
+end)
+end)
+
+local function GetClosestPlayer()
+    local MaximumDistance = _G.CircleRadius
+    local Target = nil
+
+    for _, v in next, Player:GetPlayers() do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if not _G.TeamCheck or v.Team ~= LocalPlayer.Team then
+                local ScreenPoint = Camera:WorldToScreenPoint(v.Character:WaitForChild("HumanoidRootPart", math.huge).Position)
+                local mousePos = UserInput:GetMouseLocation()
+                local VectorDistance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(ScreenPoint.X, ScreenPoint.Y)).Magnitude
+
+                if VectorDistance < MaximumDistance then
+                    MaximumDistance = VectorDistance
+                    Target = v
+                end
+            end
+        end
+    end
+
+    return Target
+end
+
+-- Corrected InputBegan/InputEnded
+UserInput.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = true
+    end
+end)
+
+UserInput.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        Holding = false
+    end
+end)
+
+-- เพิ่มตัวแปรเพื่อเก็บ Tween ที่กำลังทำงาน
+local currentTween = nil
+
+-- Main Aimbot Logic
+RunService.RenderStepped:Connect(function()
+    local mousePos = UserInput:GetMouseLocation()
+    FOVCircle.Position = Vector2.new(mousePos.X, mousePos.Y)
+
+    -- อัปเดตค่าของวงกลมตามค่า _G (ถ้าเปลี่ยนจากที่อื่น)
+    FOVCircle.Radius = _G.CircleRadius
+    FOVCircle.Filled = _G.CircleFilled
+    FOVCircle.Color = _G.CircleColor
+    FOVCircle.Visible = _G.CircleVisible
+    FOVCircle.Transparency = _G.CircleTransparency
+    FOVCircle.Thickness = _G.CircleThickness
+
+    if Holding and _G.AimbotEnabled then
+        local target = GetClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild(_G.AimPart) then
+            local aimPosition = target.Character[_G.AimPart].Position
+            local newCFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
+
+            -- ยกเลิก Tween เก่า (ถ้ายังเล่นอยู่)
+            if currentTween then
+                currentTween:Cancel()
+            end
+
+            -- สร้าง Tween ใหม่เพื่อหมุนกล้องแบบสมูท
+            currentTween = Tween:Create(Camera, TweenInfo.new(
+                _G.Sensitivity, -- ระยะเวลา
+                Enum.EasingStyle.Sine,
+                Enum.EasingDirection.Out
+            ), {CFrame = newCFrame})
+
+            currentTween:Play()
+        end
+    end
+end)
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = game.Players.LocalPlayer
+
+local flying = false
+local flySpeed = 50
+
+local velocity = Instance.new("BodyVelocity")
+velocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+velocity.Velocity = Vector3.new(0, 0, 0)
+
+local controls = {
+	W = false,
+	A = false,
+	S = false,
+	D = false,
+	Space = false,
+	LeftShift = false,
+	RightShift = false,
+}
+
+local Character
+local Humanoid
+local HRP
+
+local function updateCharacterRefs()
+	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	Humanoid = Character:WaitForChild("Humanoid")
+	HRP = Character:WaitForChild("HumanoidRootPart")
+end
+
+-- ตรวจจับการกดปุ่มควบคุม
+local function onInputBegan(input, gameProcessed)
+	if gameProcessed then return end
+	local keyName = input.KeyCode.Name
+	if controls[keyName] ~= nil then
+		controls[keyName] = true
+	end
+end
+
+local function onInputEnded(input)
+	local keyName = input.KeyCode.Name
+	if controls[keyName] ~= nil then
+		controls[keyName] = false
+	end
+end
+
+UserInputService.InputBegan:Connect(onInputBegan)
+UserInputService.InputEnded:Connect(onInputEnded)
+
+RunService.RenderStepped:Connect(function()
+	-- ตรวจสอบสถานะ FlyEnabled
+	if _G.FlyEnabled and not flying then
+		-- เริ่มบิน
+		flying = true
+		updateCharacterRefs()
+		Humanoid.PlatformStand = true
+		velocity.Parent = HRP
+	elseif not _G.FlyEnabled and flying then
+		-- หยุดบิน
+		flying = false
+		if HRP and Humanoid then
+			velocity.Parent = nil
+			Humanoid.PlatformStand = false
+			HRP.Velocity = Vector3.new(0, 0, 0)
+		end
+	end
+
+	-- ถ้ายังไม่บินไม่ต้องอัปเดต
+	if not flying then return end
+
+	local cam = workspace.CurrentCamera
+	local direction = Vector3.new(0, 0, 0)
+
+	if controls.W then
+		direction += cam.CFrame.LookVector
+	end
+	if controls.S then
+		direction -= cam.CFrame.LookVector
+	end
+	if controls.A then
+		direction -= cam.CFrame.RightVector
+	end
+	if controls.D then
+		direction += cam.CFrame.RightVector
+	end
+	if controls.Space then
+		direction += Vector3.new(0, 1, 0)
+	end
+	if controls.LeftShift or controls.RightShift then
+		direction -= Vector3.new(0, 1, 0)
+	end
+
+	if direction.Magnitude > 0 then
+		velocity.Velocity = direction.Unit * flySpeed
+	else
+		velocity.Velocity = Vector3.new(0, 0, 0)
+	end
+
+	-- ปิดการชนกันเพื่อบินทะลุ
+	if Character then
+		for _, part in ipairs(Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
