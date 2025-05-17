@@ -85,6 +85,12 @@ local silentAim = {
 	Fov = 1000,
 }
 
+--// Global Settings HITBOX
+_G.HitboxEnabled = false
+_G.HitboxSize = Vector3.new(13, 13, 13)
+_G.HitboxTransparency = 0.8
+_G.TeamCheck = false
+
 -- // FIND TORSO SUPPORT (R15)
 local function findTorsoPart(character)
 	return character:FindFirstChild("UpperTorso") or character:FindFirstChild("LowerTorso")
@@ -190,14 +196,20 @@ local tabs = {
 
 local sections = {
 	MainSection1 = tabs.Main:Section({ Side = "Left" }),
+	SilentAim = tabs.Main:Section({ Side = "Left" }),
 	MainSection2 = tabs.Main:Section({ Side = "Right" }),
 	MainSection3 = tabs.Main2:Section({ Side = "Left" }),
+	HitBox = tabs.Main2:Section({ Side = "Left" }),
 }
 
 -- Aimbot
 
 sections.MainSection1:Header({
 	Name = "Aimbot"
+})
+
+sections.SilentAim:Header({
+	Name = "Silent Aim"
 })
 
 sections.MainSection1:Toggle({
@@ -207,20 +219,6 @@ sections.MainSection1:Toggle({
         _G.AimbotEnabled = value
     end,
 }, "AimbotToggle")
-
--- // UI: TOGGLE
-sections.MainSection1:Toggle({
-	Name = "Enable Silent Aim",
-	Default = silentAim.Enabled,
-	Callback = function(value)
-		silentAim.Enabled = value
-		Window:Notify({
-			Title = "Silent Aim",
-			Description = (value and "Enabled" or "Disabled") .. " Silent Aim",
-			Lifetime = 4,
-		})
-	end,
-}, "SilentAimToggle")
 
 sections.MainSection1:Toggle({
     Name = "Aimbot FOV",
@@ -273,8 +271,22 @@ sections.MainSection1:Toggle({
 
 -- silentAim
 
+-- // UI: TOGGLE
+sections.SilentAim:Toggle({
+	Name = "Enable Silent Aim",
+	Default = silentAim.Enabled,
+	Callback = function(value)
+		silentAim.Enabled = value
+		Window:Notify({
+			Title = "Silent Aim",
+			Description = (value and "Enabled" or "Disabled") .. " Silent Aim",
+			Lifetime = 4,
+		})
+	end,
+}, "SilentAimToggle")
+
 -- // UI: DROPDOWN
-sections.MainSection1:Dropdown({
+sections.SilentAim:Dropdown({
 	Name = "Target Part",
 	Multi = false,
 	Required = true,
@@ -295,7 +307,7 @@ sections.MainSection1:Dropdown({
 	end,
 }, "TargetDropdown")
 
-sections.MainSection1:Keybind({
+sections.SilentAim:Keybind({
 	Name = "Switch Target Part (Keybind)",
 	Callback = function(binded)
 		-- เปลี่ยนเป้าหมายไปยังตัวถัดไป
@@ -334,6 +346,74 @@ sections.MainSection3:Toggle({
         _G.FlyEnabled = value -- ควบคุมการเปิด/ปิดระบบบินจากภายนอก
     end,
 }, "FlyToggle")
+
+
+sections.HitBox:Toggle({
+	Name = "Enable Hitbox",
+	Default = _G.HitboxEnabled,
+	Callback = function(state)
+		_G.HitboxEnabled = state
+		Window:Notify({
+			Title = "Hitbox",
+			Description = state and "Enabled Hitbox" or "Disabled Hitbox",
+			Lifetime = 2
+		})
+	end
+})
+
+sections.HitBox:Toggle({
+	Name = "Team Check",
+	Default = _G.TeamCheck,
+	Callback = function(state)
+		_G.TeamCheck = state
+		Window:Notify({
+			Title = "Hitbox",
+			Description = state and "Enabled Team Check" or "Disabled Team Check",
+			Lifetime = 2
+		})
+	end
+})
+
+sections.HitBox:Slider({
+	Name = "Transparency",
+	Default = _G.HitboxTransparency * 100,
+	Minimum = 0,
+	Maximum = 100,
+	DisplayMethod = "Percent",
+	Callback = function(value)
+		_G.HitboxTransparency = value / 100
+	end
+})
+
+sections.HitBox:Slider({
+	Name = "Size X",
+	Default = _G.HitboxSize.X,
+	Minimum = 1,
+	Maximum = 50,
+	Callback = function(value)
+		_G.HitboxSize = Vector3.new(value, _G.HitboxSize.Y, _G.HitboxSize.Z)
+	end
+})
+
+sections.HitBox:Slider({
+	Name = "Size Y",
+	Default = _G.HitboxSize.Y,
+	Minimum = 1,
+	Maximum = 50,
+	Callback = function(value)
+		_G.HitboxSize = Vector3.new(_G.HitboxSize.X, value, _G.HitboxSize.Z)
+	end
+})
+
+sections.HitBox:Slider({
+	Name = "Size Z",
+	Default = _G.HitboxSize.Z,
+	Minimum = 1,
+	Maximum = 50,
+	Callback = function(value)
+		_G.HitboxSize = Vector3.new(_G.HitboxSize.X, _G.HitboxSize.Y, value)
+	end
+})
 
 -- CFrame Speed (Z) Improved implementation using RunService connection
 local UIS = game:GetService("UserInputService")
@@ -949,6 +1029,78 @@ RunService.RenderStepped:Connect(function()
 		for _, part in ipairs(Character:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
+			end
+		end
+	end
+end)
+
+--// Hitbox Script
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local partsToExpand = {"Head", "HumanoidRootPart", "RightUpperLeg", "LeftUpperLeg"}
+local originalProperties = {}
+local hitboxAppliedTo = {}
+
+local function expandHitbox(character)
+	for _, partName in ipairs(partsToExpand) do
+		local part = character:FindFirstChild(partName)
+		if part and part:IsA("BasePart") then
+			local id = character:GetFullName() .. "." .. partName
+			if not originalProperties[id] then
+				originalProperties[id] = {
+					Size = part.Size,
+					Transparency = part.Transparency,
+					CanCollide = part.CanCollide
+				}
+			end
+			part.Size = _G.HitboxSize
+			part.Transparency = _G.HitboxTransparency
+			part.CanCollide = false
+		end
+	end
+	hitboxAppliedTo[character] = true
+end
+
+local function restoreHitbox(character)
+	for _, partName in ipairs(partsToExpand) do
+		local part = character:FindFirstChild(partName)
+		local id = character:GetFullName() .. "." .. partName
+		local props = originalProperties[id]
+		if part and props then
+			part.Size = props.Size
+			part.Transparency = props.Transparency
+			part.CanCollide = props.CanCollide
+		end
+	end
+	hitboxAppliedTo[character] = nil
+end
+
+-- Auto-update loop
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character then
+				-- ระบบ TeamCheck
+				if _G.TeamCheck and player.Team == LocalPlayer.Team then
+					if hitboxAppliedTo[player.Character] then
+						restoreHitbox(player.Character)
+					end
+					continue
+				end
+
+				if _G.HitboxEnabled then
+					if not hitboxAppliedTo[player.Character] then
+						expandHitbox(player.Character)
+					else
+						expandHitbox(player.Character)
+					end
+				else
+					if hitboxAppliedTo[player.Character] then
+						restoreHitbox(player.Character)
+					end
+				end
 			end
 		end
 	end
