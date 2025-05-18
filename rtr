@@ -190,7 +190,7 @@ local tabGroups = {
 
 local tabs = {
 	Main = tabGroups.TabGroup1:Tab({ Name = "Combat", Image = "rbxassetid://137661673258910" }),
-	Main2 = tabGroups.TabGroup1:Tab({ Name = "Combat", Image = "rbxassetid://137661673258910" }),
+	Main2 = tabGroups.TabGroup1:Tab({ Name = "Outh", Image = "rbxassetid://137661673258910" }),
 	Settings = tabGroups.TabGroup1:Tab({ Name = "Settings", Image = "rbxassetid://10734950309" })
 }
 
