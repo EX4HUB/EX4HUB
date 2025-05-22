@@ -286,8 +286,8 @@ sections.MainSection1:Toggle({
 
 -- // UI: TOGGLE
 sections.SilentAim:Toggle({
-	Name = "Enable Silent Aim",
-	Default = silentAim.Enabled,
+	Name = "Silent Aim",
+	Default = false,
 	Callback = function(value)
 		silentAim.Enabled = value
 		Window:Notify({
