@@ -148,7 +148,7 @@ local success, err = pcall(function()
 end)
 
 if not success then
-    warn("[Silent Aim] hookmetamethod failed or not supported by executor:", err)
+    warn(":(", err)
 end
 
 local globalSettings = {
