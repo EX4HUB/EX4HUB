@@ -129,22 +129,27 @@ local function getTarget()
 	return closestHitpart
 end
 
--- // METAMETHOD HOOK
-local oldIndex
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
-    if silentAim.Enabled 
-        and self == camera 
-        and index == "CoordinateFrame"
-        and string.match(debug.info(3, "s"), "Client.Functions.Weapons")
-        and debug.info(3, "n") ~= "RotCamera" then
+local success, err = pcall(function()
+    local oldIndex
+    oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
+        if silentAim.Enabled 
+            and self == camera 
+            and index == "CoordinateFrame"
+            and string.match(debug.info(3, "s"), "Client.Functions.Weapons")
+            and debug.info(3, "n") ~= "RotCamera" then
 
-        local hitPart = getTarget()
-        if hitPart then
-            return CFrame.new(camera.CFrame.Position, hitPart.Position)
+            local hitPart = getTarget()
+            if hitPart then
+                return CFrame.new(camera.CFrame.Position, hitPart.Position)
+            end
         end
-    end
-    return oldIndex(self, index)
-end))
+        return oldIndex(self, index)
+    end))
+end)
+
+if not success then
+    warn("[Silent Aim] hookmetamethod failed or not supported by executor:", err)
+end
 
 local globalSettings = {
 	UIBlurToggle = Window:GlobalSetting({
