@@ -1,163 +1,219 @@
-local players = game:GetService("Players")
-local run_service = game:GetService("RunService")
-local user_input = game:GetService("UserInputService")
-local local_player = players.LocalPlayer
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInput = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
 
--- GUI
-local screen_gui = Instance.new("ScreenGui", local_player:WaitForChild("PlayerGui"))
-screen_gui.Name = "TargetSelector"
-screen_gui.ResetOnSpawn = false
+-- สร้าง GUI
+local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "TargetSelector"
+ScreenGui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame", screen_gui)
-frame.Position = UDim2.new(0, 20, 0.5, -120)
-frame.Size = UDim2.new(0, 220, 0, 260)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 0
-frame.Visible = true
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Name = "MainFrame"
+Frame.Size = UDim2.new(0, 220, 0, 260)
+Frame.Position = UDim2.new(0.03, 0, 0.4, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 0
+Frame.Visible = true
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "🎯 เลือกเป้าหมาย"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
 
-local ui_list = Instance.new("UIListLayout", frame)
-ui_list.Padding = UDim.new(0, 4)
-ui_list.SortOrder = Enum.SortOrder.LayoutOrder
+local Counter = Instance.new("TextLabel", Frame)
+Counter.Size = UDim2.new(1, 0, 0, 20)
+Counter.Position = UDim2.new(0, 0, 0, 30)
+Counter.Text = "เป้าหมายที่เลือก: 0"
+Counter.TextColor3 = Color3.fromRGB(180, 180, 180)
+Counter.BackgroundTransparency = 1
+Counter.Font = Enum.Font.Gotham
+Counter.TextSize = 14
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "🎯 เลือกเป้าหมาย"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
+local RefreshBtn = Instance.new("TextButton", Frame)
+RefreshBtn.Size = UDim2.new(0.94, 0, 0, 30)
+RefreshBtn.Position = UDim2.new(0.03, 0, 0, 55)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+RefreshBtn.Font = Enum.Font.GothamBold
+RefreshBtn.Text = "🔄 รีเฟรชรายชื่อ"
+RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RefreshBtn.TextSize = 14
+Instance.new("UICorner", RefreshBtn).CornerRadius = UDim.new(0, 6)
 
-local counter = Instance.new("TextLabel", frame)
-counter.Size = UDim2.new(1, 0, 0, 20)
-counter.Text = "เป้าหมายที่เลือก: 0"
-counter.TextColor3 = Color3.fromRGB(180, 180, 180)
-counter.BackgroundTransparency = 1
-counter.Font = Enum.Font.Gotham
-counter.TextSize = 14
+-- ปุ่มปิด (มุมขวาบน)
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 25, 0, 25)
+CloseButton.Position = UDim2.new(1, -30, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextScaled = true
+CloseButton.Parent = Frame
 
-local refresh_btn = Instance.new("TextButton", frame)
-refresh_btn.Size = UDim2.new(1, 0, 0, 30)
-refresh_btn.Text = "🔄 รีเฟรชรายชื่อ"
-refresh_btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-refresh_btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-refresh_btn.Font = Enum.Font.GothamBold
-refresh_btn.TextSize = 14
-Instance.new("UICorner", refresh_btn).CornerRadius = UDim.new(0, 6)
+local CloseUICorner = Instance.new("UICorner")
+CloseUICorner.CornerRadius = UDim.new(0, 6)
+CloseUICorner.Parent = CloseButton
 
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, 0, 1, -110)
-scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarThickness = 4
-scroll.BackgroundTransparency = 1
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+-- Scroll list
+local Scroll = Instance.new("ScrollingFrame", Frame)
+Scroll.Position = UDim2.new(0, 0, 0, 95)
+Scroll.Size = UDim2.new(1, 0, 1, -100)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 4
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
-local scroll_list = Instance.new("UIListLayout", scroll)
-scroll_list.Padding = UDim.new(0, 4)
-scroll_list.SortOrder = Enum.SortOrder.LayoutOrder
+local ScrollList = Instance.new("UIListLayout", Scroll)
+ScrollList.Padding = UDim.new(0, 4)
+ScrollList.SortOrder = Enum.SortOrder.LayoutOrder
 
--- เป้าหมายที่เลือก
-local target_players = {}
+-- เป้าหมาย
+local TargetPlayers = {}
 
--- อัปเดต counter
 local function updateCounter()
-    local count = 0
-    for _ in pairs(target_players) do count += 1 end
-    counter.Text = "เป้าหมายที่เลือก: " .. count
+	local count = 0
+	for _ in pairs(TargetPlayers) do count += 1 end
+	Counter.Text = "เป้าหมายที่เลือก: " .. count
 end
 
--- อัปเดตรายชื่อผู้เล่น
 local function updatePlayerList()
-    for _, v in pairs(scroll:GetChildren()) do
-        if v:IsA("TextButton") then v:Destroy() end
-    end
+	for _, child in pairs(Scroll:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
 
-    for _, player in pairs(players:GetPlayers()) do
-        if player ~= local_player and player.Team ~= local_player.Team then
-            local btn = Instance.new("TextButton", scroll)
-            btn.Size = UDim2.new(1, -10, 0, 30)
-            btn.Text = player.Name
-            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Font = Enum.Font.Gotham
-            btn.TextSize = 14
-            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team then
+			local btn = Instance.new("TextButton", Scroll)
+			btn.Size = UDim2.new(1, -10, 0, 30)
+			btn.Text = player.Name
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-            btn.MouseButton1Click:Connect(function()
-                if target_players[player.Name] then
-                    target_players[player.Name] = nil
-                    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.MouseButton1Click:Connect(function()
+				if TargetPlayers[player.Name] then
+					TargetPlayers[player.Name] = nil
+					btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
-                    -- ลบ Highlight ถ้ามี
-                    if player.Character then
-                        local highlight = player.Character:FindFirstChild("TargetHighlight")
-                        if highlight then
-                            highlight:Destroy()
-                        end
-                    end
-                else
-                    target_players[player.Name] = true
-                    btn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+					if player.Character then
+						local h = player.Character:FindFirstChild("TargetHighlight")
+						if h then h:Destroy() end
+					end
+				else
+					TargetPlayers[player.Name] = true
+					btn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
 
-                    -- สร้าง Highlight
-                    if player.Character and not player.Character:FindFirstChild("TargetHighlight") then
-                        local highlight = Instance.new("Highlight")
-                        highlight.Name = "TargetHighlight"
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                        highlight.FillTransparency = 0.5
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        highlight.OutlineTransparency = 0
-                        highlight.Adornee = player.Character
-                        highlight.Parent = player.Character
-                    end
-                end
+					if player.Character and not player.Character:FindFirstChild("TargetHighlight") then
+						local highlight = Instance.new("Highlight")
+						highlight.Name = "TargetHighlight"
+						highlight.FillColor = Color3.fromRGB(255, 0, 0)
+						highlight.FillTransparency = 0.5
+						highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+						highlight.OutlineTransparency = 0
+						highlight.Adornee = player.Character
+						highlight.Parent = player.Character
+					end
+				end
 
-                updateCounter()
-            end)
-        end
-    end
+				updateCounter()
+			end)
+		end
+	end
+
+	task.wait()
+	Scroll.CanvasSize = UDim2.new(0, 0, 0, ScrollList.AbsoluteContentSize.Y)
 end
 
--- ปุ่มรีเฟรช
-refresh_btn.MouseButton1Click:Connect(updatePlayerList)
-players.PlayerAdded:Connect(updatePlayerList)
-players.PlayerRemoving:Connect(updatePlayerList)
+RefreshBtn.MouseButton1Click:Connect(updatePlayerList)
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
 
 updatePlayerList()
 updateCounter()
 
+-- Tween ปิด/เปิด GUI
+local isGuiVisible = true
+local elementsToTween = {Frame, Title, Counter, RefreshBtn, CloseButton}
+
+local function tweenGUI(open)
+	local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	for _, el in pairs(elementsToTween) do
+		if el:IsA("GuiObject") then
+			TweenService:Create(el, tweenInfo, {
+				BackgroundTransparency = open and 0 or 1
+			}):Play()
+
+			if el:IsA("TextLabel") or el:IsA("TextButton") then
+				TweenService:Create(el, tweenInfo, {
+					TextTransparency = open and 0 or 1
+				}):Play()
+			end
+		end
+	end
+end
+
+local function toggleGUI()
+	if isGuiVisible then
+		tweenGUI(false)
+		task.delay(0.3, function()
+			Frame.Visible = false
+		end)
+	else
+		Frame.Visible = true
+		tweenGUI(true)
+	end
+	isGuiVisible = not isGuiVisible
+end
+
 -- ปิด/เปิด GUI ด้วย RightShift
-user_input.InputBegan:Connect(function(input, gp)
-    if input.KeyCode == Enum.KeyCode.RightShift and not gp then
-        frame.Visible = not frame.Visible
-    end
+UserInput.InputBegan:Connect(function(input, gp)
+	if input.KeyCode == Enum.KeyCode.RightShift and not gp then
+		toggleGUI()
+	end
 end)
 
--- ระบบโจมตี (พร้อม cooldown ต่อเป้าหมาย)
-local last_attack = {}
+-- ปิด GUI ด้วยปุ่ม X
+CloseButton.MouseButton1Click:Connect(function()
+	tweenGUI(false)
+	task.delay(0.3, function()
+		ScreenGui:Destroy()
+	end)
+end)
 
-run_service.RenderStepped:Connect(function()
-    if local_player.Character then
-        local tool = local_player.Character:FindFirstChildOfClass("Tool")
-        if tool and tool:FindFirstChild("Gun") then
-            for _, player in pairs(players:GetPlayers()) do
-                if player ~= local_player and target_players[player.Name] then
-                    local char = player.Character
-                    if char and char:FindFirstChild("Head") and char:FindFirstChild("HumanoidRootPart") then
-                        local now = tick()
-                        local last = last_attack[player.Name] or 0
-                        if now - last >= 0.25 then
-                            last_attack[player.Name] = now
-                            task.spawn(function()
-                                pcall(function()
-                                    getsenv(tool.Gun).DealDamage(char.Head, char.Head, "Melee")
-                                end)
-                            end)
-                        end
-                    end
-                end
-            end
-        end
-    end
+-- ระบบโจมตี
+local LastAttack = {}
+
+RunService.RenderStepped:Connect(function()
+	if LocalPlayer.Character then
+		local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+		if tool and tool:FindFirstChild("Gun") then
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player ~= LocalPlayer and TargetPlayers[player.Name] then
+					local char = player.Character
+					if char and char:FindFirstChild("Head") and char:FindFirstChild("HumanoidRootPart") then
+						local now = tick()
+						local last = LastAttack[player.Name] or 0
+						if now - last >= 0.25 then
+							LastAttack[player.Name] = now
+							task.spawn(function()
+								pcall(function()
+									getsenv(tool.Gun).DealDamage(char.Head, char.Head, "Melee")
+								end)
+							end)
+						end
+					end
+				end
+			end
+		end
+	end
 end)
