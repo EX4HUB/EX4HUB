@@ -1,0 +1,283 @@
+-- 🔧 Global Settings
+_G.Skeleton = false
+_G.Box = true
+_G.Distance = false
+_G.ShowName = false
+_G.ShowHealthText = false
+_G.ShowTracer = false
+_G.Color = Color3.fromRGB(255, 128, 0)
+_G.TeamCheck = true
+_G.RefreshRate = 0.03
+
+-- 🚀 Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local ESP = {}
+
+-- 🧱 Drawing Helpers
+local function newLine()
+    local line = Drawing.new("Line")
+    line.Thickness = 1
+    line.Transparency = 1
+    line.Visible = false
+    line.Color = _G.Color
+    return line
+end
+
+local function newText()
+    local txt = Drawing.new("Text")
+    txt.Size = 16
+    txt.Center = true
+    txt.Outline = true
+    txt.OutlineColor = Color3.new(0, 0, 0)
+    txt.Font = 2
+    txt.Color = _G.Color
+    txt.Visible = false
+    return txt
+end
+
+local function newBox()
+    local box = {}
+    for i = 1, 4 do
+        box[i] = newLine()
+    end
+    return box
+end
+
+local function toScreen(pos)
+    local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+    return Vector2.new(screenPos.X, screenPos.Y), onScreen, screenPos.Z
+end
+
+local function getBones(character)
+    local isR15 = character:FindFirstChild("UpperTorso") ~= nil
+    if isR15 then
+        return {
+            {"Head", "UpperTorso"},
+            {"UpperTorso", "LowerTorso"},
+            {"UpperTorso", "LeftUpperArm"},
+            {"UpperTorso", "RightUpperArm"},
+            {"LeftUpperArm", "LeftLowerArm"},
+            {"RightUpperArm", "RightLowerArm"},
+            {"LeftLowerArm", "LeftHand"},
+            {"RightLowerArm", "RightHand"},
+            {"LowerTorso", "LeftUpperLeg"},
+            {"LowerTorso", "RightUpperLeg"},
+            {"LeftUpperLeg", "LeftLowerLeg"},
+            {"RightUpperLeg", "RightLowerLeg"},
+            {"LeftLowerLeg", "LeftFoot"},
+            {"RightLowerLeg", "RightFoot"},
+        }
+    else
+        return {
+            {"Head", "Torso"},
+            {"Torso", "Left Arm"},
+            {"Torso", "Right Arm"},
+            {"Torso", "Left Leg"},
+            {"Torso", "Right Leg"},
+        }
+    end
+end
+
+-- 🔄 Main ESP Update Loop
+local function updateESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if _G.TeamCheck and player.Team == LocalPlayer.Team then continue end
+
+        local char = player.Character
+        if not char or not char:FindFirstChild("Head") or not char:FindFirstChild("HumanoidRootPart") then
+            if ESP[player] then
+                for _, v in pairs(ESP[player]) do
+                    if typeof(v) == "table" then
+                        for _, obj in pairs(v) do if obj then obj.Visible = false end end
+                    elseif typeof(v) == "Instance" then
+                        v.Visible = false
+                    end
+                end
+            end
+            continue
+        end
+
+        local rootPart = char:FindFirstChild("HumanoidRootPart")
+        local pos, onScreen, distance = toScreen(rootPart.Position)
+
+        -- ✨ Create ESP objects if not exists
+        if not ESP[player] then
+            ESP[player] = {
+                Skeleton = {},
+                Box = newBox(),
+                Distance = newText(),
+                Name = newText(),
+                HealthText = newText(),
+                HealthBar = { Background = newLine(), Bar = newLine() },
+                Tracer = newLine()
+            }
+
+            -- ล้าง ESP เมื่อ Character ถูกลบ
+            player.CharacterRemoving:Connect(function()
+                if ESP[player] then
+                    for _, v in pairs(ESP[player]) do
+                        if typeof(v) == "table" then
+                            for _, obj in pairs(v) do if obj then obj.Visible = false end end
+                        elseif typeof(v) == "Instance" then
+                            v.Visible = false
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- 🦴 Skeleton
+        if _G.Skeleton then
+            local bones = getBones(char)
+            if #ESP[player].Skeleton ~= #bones then
+                for _, line in pairs(ESP[player].Skeleton) do if line then line:Remove() end end
+                ESP[player].Skeleton = {}
+                for _ = 1, #bones do table.insert(ESP[player].Skeleton, newLine()) end
+            end
+            for i, bone in ipairs(bones) do
+                local a = char:FindFirstChild(bone[1])
+                local b = char:FindFirstChild(bone[2])
+                local line = ESP[player].Skeleton[i]
+                if a and b then
+                    local aPos, aOnScreen = toScreen(a.Position)
+                    local bPos, bOnScreen = toScreen(b.Position)
+                    if aOnScreen and bOnScreen then
+                        line.From = aPos
+                        line.To = bPos
+                        line.Visible = true
+                        line.Color = _G.Color
+                    else
+                        line.Visible = false
+                    end
+                else
+                    line.Visible = false
+                end
+            end
+        else
+            for _, line in pairs(ESP[player].Skeleton) do if line then line.Visible = false end end
+        end
+
+        -- 🔳 Box + HealthBar
+        local head = char:FindFirstChild("Head")
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if _G.Box and head and humanoid then
+            local headPos, hOnScreen = toScreen(head.Position + Vector3.new(0, 0.5, 0))
+            local footPos, fOnScreen = toScreen(rootPart.Position - Vector3.new(0, 3, 0))
+            local box = ESP[player].Box
+
+            if hOnScreen and fOnScreen then
+                local height = math.abs(headPos.Y - footPos.Y)
+                local width = height / 2
+                local topLeft = Vector2.new(headPos.X - width / 2, headPos.Y)
+                local topRight = Vector2.new(headPos.X + width / 2, headPos.Y)
+                local bottomLeft = Vector2.new(headPos.X - width / 2, headPos.Y + height)
+                local bottomRight = Vector2.new(headPos.X + width / 2, headPos.Y + height)
+
+                box[1].From, box[1].To = topLeft, topRight
+                box[2].From, box[2].To = topRight, bottomRight
+                box[3].From, box[3].To = bottomRight, bottomLeft
+                box[4].From, box[4].To = bottomLeft, topLeft
+                for _, line in pairs(box) do line.Visible = true line.Color = _G.Color end
+
+                -- HealthBar
+                local hpPercent = math.clamp(humanoid.Health, 0, humanoid.MaxHealth) / humanoid.MaxHealth
+                local barHeight = height
+                local barWidth = 2
+                local x = headPos.X - width / 2 - 6
+                local y = headPos.Y
+
+                local bg = ESP[player].HealthBar.Background
+                local fg = ESP[player].HealthBar.Bar
+
+                bg.From = Vector2.new(x, y)
+                bg.To = Vector2.new(x, y + barHeight)
+                bg.Color = Color3.new(0, 0, 0)
+                bg.Thickness = barWidth
+                bg.Visible = true
+
+                fg.From = Vector2.new(x, y + (1 - hpPercent) * barHeight)
+                fg.To = Vector2.new(x, y + barHeight)
+                fg.Color = Color3.fromRGB(0, 255, 0)
+                fg.Thickness = barWidth
+                fg.Visible = true
+            else
+                for _, line in pairs(box) do line.Visible = false end
+                ESP[player].HealthBar.Background.Visible = false
+                ESP[player].HealthBar.Bar.Visible = false
+            end
+        else
+            for _, line in pairs(ESP[player].Box) do line.Visible = false end
+            ESP[player].HealthBar.Background.Visible = false
+            ESP[player].HealthBar.Bar.Visible = false
+        end
+
+        -- 📏 Distance
+        if _G.Distance and onScreen then
+            ESP[player].Distance.Position = Vector2.new(pos.X, pos.Y + 30)
+            ESP[player].Distance.Text = string.format("[%.1fm]", distance)
+            ESP[player].Distance.Color = _G.Color
+            ESP[player].Distance.Visible = true
+        else
+            ESP[player].Distance.Visible = false
+        end
+
+        -- 🧑 Name
+        if _G.ShowName and onScreen then
+            ESP[player].Name.Text = player.Name
+            ESP[player].Name.Position = Vector2.new(pos.X, pos.Y - 15)
+            ESP[player].Name.Color = _G.Color
+            ESP[player].Name.Visible = true
+        else
+            ESP[player].Name.Visible = false
+        end
+
+        -- ❤️ Health %
+        if _G.ShowHealthText and onScreen then
+            ESP[player].HealthText.Text = string.format("%.0f%%", (humanoid.Health / humanoid.MaxHealth) * 100)
+            ESP[player].HealthText.Position = Vector2.new(pos.X, pos.Y + 45)
+            ESP[player].HealthText.Color = _G.Color
+            ESP[player].HealthText.Visible = true
+        else
+            ESP[player].HealthText.Visible = false
+        end
+
+        -- 📍 Tracer
+        if _G.ShowTracer and onScreen then
+            local tracer = ESP[player].Tracer
+            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            tracer.To = pos
+            tracer.Color = _G.Color
+            tracer.Visible = true
+        else
+            ESP[player].Tracer.Visible = false
+        end
+    end
+end
+
+-- 🔁 Main Loop
+task.spawn(function()
+    while task.wait(_G.RefreshRate) do
+        local success, err = pcall(updateESP)
+        if not success then warn("[ESP ERROR]:", err) end
+    end
+end)
+
+-- 🧼 Clear ESP on player leave
+Players.PlayerRemoving:Connect(function(player)
+    if ESP[player] then
+        for _, line in pairs(ESP[player].Skeleton or {}) do if line then line:Remove() end end
+        for _, line in pairs(ESP[player].Box or {}) do if line then line:Remove() end end
+        if ESP[player].Distance then ESP[player].Distance:Remove() end
+        if ESP[player].Name then ESP[player].Name:Remove() end
+        if ESP[player].HealthText then ESP[player].HealthText:Remove() end
+        if ESP[player].HealthBar then
+            if ESP[player].HealthBar.Background then ESP[player].HealthBar.Background:Remove() end
+            if ESP[player].HealthBar.Bar then ESP[player].HealthBar.Bar:Remove() end
+        end
+        if ESP[player].Tracer then ESP[player].Tracer:Remove() end
+        ESP[player] = nil
+    end
+end)
