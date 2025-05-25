@@ -1,0 +1,112 @@
+-- Executor-Friendly Notification UI with Position Option
+
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local function CreateNotification(titleText, subtitleText, duration, align)
+	duration = duration or 5
+	align = align or "right" -- "right" or "left"
+
+	local NotificationGui = Instance.new("ScreenGui")
+	NotificationGui.Name = "NotificationGui"
+	pcall(function()
+		NotificationGui.Parent = gethui and gethui() or CoreGui
+	end)
+	NotificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Name = "MainFrame"
+	MainFrame.Parent = NotificationGui
+	MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	MainFrame.BorderSizePixel = 0
+	MainFrame.Size = UDim2.new(0, 239, 0, 103)
+	MainFrame.BackgroundTransparency = 1
+
+	-- Align position
+	if align == "left" then
+		MainFrame.Position = UDim2.new(0.02, 0, 0.05, 0)
+	elseif align == "right" then
+		MainFrame.Position = UDim2.new(1, -250, 0.05, 0)
+	else
+		warn("Unknown alignment:", align)
+		MainFrame.Position = UDim2.new(0.5, -120, 0.4, -52) -- center fallback
+	end
+
+	local UICorner = Instance.new("UICorner")
+	UICorner.CornerRadius = UDim.new(0, 5)
+	UICorner.Parent = MainFrame
+
+	local TimeBar = Instance.new("Frame")
+	TimeBar.Name = "TimeBar"
+	TimeBar.Parent = MainFrame
+	TimeBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+	TimeBar.BorderColor3 = Color3.fromRGB(0, 255, 0)
+	TimeBar.BorderSizePixel = 0
+	TimeBar.Position = UDim2.new(0.033, 0, 0.27, 0)
+	TimeBar.Size = UDim2.new(0, 223, 0, 2)
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Parent = MainFrame
+	title.BackgroundTransparency = 1
+	title.Position = UDim2.new(0.079, 0, -0.12, 0)
+	title.Size = UDim2.new(0, 200, 0, 50)
+	title.Font = Enum.Font.SourceSans
+	title.Text = titleText or "Title Notification"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextSize = 21
+
+	local CloseButton = Instance.new("ImageButton")
+	CloseButton.Name = "CloseButton"
+	CloseButton.Parent = MainFrame
+	CloseButton.BackgroundTransparency = 1
+	CloseButton.Position = UDim2.new(0.88, 0, 0, 0)
+	CloseButton.Size = UDim2.new(0, 20, 0, 20)
+	CloseButton.Image = "rbxassetid://10747384394"
+	CloseButton.ImageColor3 = Color3.fromRGB(170, 0, 0)
+
+	local Subtitle = Instance.new("TextLabel")
+	Subtitle.Name = "Subtitle"
+	Subtitle.Parent = MainFrame
+	Subtitle.BackgroundTransparency = 1
+	Subtitle.Position = UDim2.new(0.033, 0, 0.368, 0)
+	Subtitle.Size = UDim2.new(0, 200, 0, 50)
+	Subtitle.Font = Enum.Font.SourceSans
+	Subtitle.Text = subtitleText or "Sub Notification"
+	Subtitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Subtitle.TextSize = 18
+	Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	-- Tween to show
+	local showTween = TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0
+	})
+	showTween:Play()
+
+	-- Tween TimeBar
+	local timeTween = TweenService:Create(TimeBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(0, 0, 0, 2)
+	})
+	timeTween:Play()
+
+	-- Close logic
+	local function close()
+		local hideTween = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1
+		})
+		hideTween:Play()
+		hideTween.Completed:Wait()
+		if NotificationGui then
+			NotificationGui:Destroy()
+		end
+	end
+
+	CloseButton.MouseButton1Click:Connect(close)
+
+	-- Auto close after duration
+	task.delay(duration, function()
+		if NotificationGui and NotificationGui.Parent then
+			close()
+		end
+	end)
+end
