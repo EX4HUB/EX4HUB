@@ -6,7 +6,7 @@ _G.ShowName = false
 _G.ShowHealthText = false
 _G.ShowTracer = false
 _G.Color = Color3.fromRGB(255, 128, 0)
-_G.TeamCheck = true
+_G.TeamCheck = false
 _G.RefreshRate = 0.03
 
 -- 🚀 Services
