@@ -78,7 +78,7 @@ local camera = workspace.CurrentCamera
 local inputService = game:GetService("UserInputService")
 
 local silentAim = {
-	Enabled = true,
+	Enabled = false,
 	HitParts = {"Head", "Torso"},
 	CurrentIndex = 1,
 	Fov = 1000,
