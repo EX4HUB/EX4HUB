@@ -1,0 +1,353 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local placeId = game.PlaceId
+local gameName = "Unknown Game" -- ค่าตั้งต้น ถ้าดึงชื่อไม่ได้
+
+-- พยายามดึงชื่อเกม
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(placeId).Name
+end)
+
+-- 🪟 สร้างหน้าต่าง GUI
+local Window = Rayfield:CreateWindow({
+   Name = gameName .. " || Create By N74",
+   Icon = 0,
+   LoadingTitle = gameName .. " || Create By N74",
+   LoadingSubtitle = "by N74",
+   Theme = "Default",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "N74 Hub"
+   }
+})
+
+-- 🧩 Tab หลัก
+local Tab = Window:CreateTab("Main", 4483362458)
+local EspTab = Window:CreateTab("Esp", 4483362458)
+
+-- ✅ ตัวแปรควบคุม
+_G.NoStamina = _G.NoStamina or false
+_G.AutoFixGen = _G.AutoFixGen or false
+_G.ESPGen = _G.ESPGen or false
+
+local GeneratorDelay = 3
+
+-- 🔘 Inf Stamina Toggle
+local InfStaminaToggle = Tab:CreateToggle({
+   Name = "Inf Stamina",
+   CurrentValue = _G.NoStamina,
+   Flag = "InfStamina",
+   Callback = function(Value)
+      _G.NoStamina = Value
+   end,
+})
+
+local Button = Tab:CreateButton({
+    Name = "WalkSpeed Bypass(Z)",
+    Callback = function()
+        repeat wait() until game:IsLoaded()
+
+        local Players = game:GetService('Players')
+        local LocalPlayer = Players.LocalPlayer
+        repeat wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        local UIS = game:GetService('UserInputService')
+        local RunService = game:GetService('RunService')
+
+        getgenv().Multiplier = 0.5
+        local Toggle = false
+        local Connection
+
+        UIS.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed then return end
+
+            if input.KeyCode == Enum.KeyCode.LeftBracket then
+                Multiplier = Multiplier + 0.01
+                --print("Multiplier:", Multiplier)
+                while UIS:IsKeyDown(Enum.KeyCode.LeftBracket) do
+                    task.wait()
+                    Multiplier = Multiplier + 0.01
+                    --print("Multiplier:", Multiplier)
+                end
+            elseif input.KeyCode == Enum.KeyCode.RightBracket then
+                Multiplier = Multiplier - 0.01
+                --print("Multiplier:", Multiplier)
+                while UIS:IsKeyDown(Enum.KeyCode.RightBracket) do
+                    task.wait()
+                    Multiplier = Multiplier - 0.01
+                    --print("Multiplier:", Multiplier)
+                end
+            elseif input.KeyCode == Enum.KeyCode.Z then
+                Toggle = not Toggle
+                --print("Bypass Toggled:", Toggle)
+
+                if Toggle then
+                    if Connection then Connection:Disconnect() end
+                    Connection = RunService.Stepped:Connect(function()
+                        local char = LocalPlayer.Character
+                        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                            char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + char.Humanoid.MoveDirection * Multiplier
+                        end
+                    end)
+                else
+                    if Connection then Connection:Disconnect() end
+                end
+            end
+        end)
+    end,
+})
+
+local Slider = Tab:CreateSlider({
+    Name = "Speed Multiplier",
+    Range = {0.1, 5},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = 0.5,
+    Flag = "WalkSpeedBypassSlider",
+    Callback = function(Value)
+        getgenv().Multiplier = Value
+        --print("Multiplier set to:", Value)
+    end,
+})
+
+-- 🔘 Auto Fix Generator Toggle
+local FixGenToggle = Tab:CreateToggle({
+   Name = "Fix Generator",
+   CurrentValue = _G.AutoFixGen,
+   Flag = "FixGenerator",
+   Callback = function(Value)
+      _G.AutoFixGen = Value
+   end,
+})
+
+-- 🎚️ Slider Delay
+local DelaySlider = Tab:CreateSlider({
+   Name = "Generator Auto-Fire Delay",
+   Range = {3, 10},
+   Increment = 3,
+   Suffix = "s",
+   CurrentValue = 3,
+   Flag = "GenDelay",
+   Callback = function(Value)
+      GeneratorDelay = Value
+   end,
+})
+
+-- 🔘 ESP Toggle
+local ESPToggle = EspTab:CreateToggle({
+   Name = "ESP Generator",
+   CurrentValue = false,
+   Flag = "ESPGenerator",
+   Callback = function(Value)
+      _G.ESPGen = Value
+   end,
+})
+-- 🔘 ESP Toggle
+local ESPToggle = EspTab:CreateToggle({
+   Name = "ESP All Players",
+   CurrentValue = false,
+   Flag = "ESPAll",
+   Callback = function(Value)
+      _G.ESPAll = Value
+   end,
+})
+
+-- 🔘 ESP Toggle
+local ESPToggle = EspTab:CreateToggle({
+   Name = "ESPKillers",
+   CurrentValue = false,
+   Flag = "ESPKillers",
+   Callback = function(Value)
+      _G.ESPKillers = Value
+   end,
+})
+local ESPToggle = EspTab:CreateToggle({
+   Name = "ESPSurvivors",
+   CurrentValue = false,
+   Flag = "ESPSurvivors",
+   Callback = function(Value)
+      _G.ESPSurvivors = Value
+   end,
+})
+
+-- 🔁 โหลดการตั้งค่า
+Rayfield:LoadConfiguration()
+
+-- 🧠 ปิดการลดสตามิน่า
+task.spawn(function()
+   local StaminaModule = require(game.ReplicatedStorage.Systems.Character.Game.Sprinting)
+   while true do
+      task.wait(0.1)
+      if _G.NoStamina then
+         if not StaminaModule.StaminaLossDisabled then
+            StaminaModule.StaminaLossDisabled = true
+         end
+         if StaminaModule.Stamina < StaminaModule.MaxStamina then
+            StaminaModule.Stamina = StaminaModule.MaxStamina
+            StaminaModule.StaminaChanged:Fire()
+         end
+      else
+         if StaminaModule.StaminaLossDisabled then
+            StaminaModule.StaminaLossDisabled = false
+         end
+      end
+   end
+end)
+
+-- 🔁 ยิง Generator ใกล้สุด
+task.spawn(function()
+   local Players = game:GetService("Players")
+   local player = Players.LocalPlayer
+
+   while true do
+      task.wait(0.5)
+      if not _G.AutoFixGen then continue end
+
+      local character = player.Character or player.CharacterAdded:Wait()
+      local rootPart = character:FindFirstChild("HumanoidRootPart")
+      if not rootPart then task.wait(1) continue end
+
+      local map = workspace:FindFirstChild("Map")
+      local ingame = map and map:FindFirstChild("Ingame")
+      local gameMap = ingame and ingame:FindFirstChild("Map")
+      if not gameMap then task.wait(1) continue end
+
+      local nearestGenerator = nil
+      local shortestDistance = math.huge
+
+      for _, obj in ipairs(gameMap:GetChildren()) do
+         if obj:IsA("Model") and obj.Name == "Generator" then
+            local remotes = obj:FindFirstChild("Remotes")
+            local re = remotes and remotes:FindFirstChild("RE")
+            local genPrimaryPart = obj.PrimaryPart or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChildWhichIsA("BasePart")
+            if genPrimaryPart and re and re:IsA("RemoteEvent") then
+               local distance = (genPrimaryPart.Position - rootPart.Position).Magnitude
+               if distance < shortestDistance then
+                  shortestDistance = distance
+                  nearestGenerator = { remote = re, object = obj }
+               end
+            end
+         end
+      end
+
+      if nearestGenerator then
+         nearestGenerator.remote:FireServer()
+         --print("⚡ ยิง RE ไปที่ Generator ที่ใกล้ที่สุด:", nearestGenerator.object:GetFullName())
+      else
+         --warn("❌ ไม่พบ Generator ที่สามารถยิงได้")
+      end
+
+      task.wait(GeneratorDelay)
+   end
+end)
+
+-- 🔁 ESP Generator
+task.spawn(function()
+   local toggleKey = Enum.KeyCode.L
+   local UserInputService = game:GetService("UserInputService")
+
+   UserInputService.InputBegan:Connect(function(input, processed)
+      if not processed and input.KeyCode == toggleKey then
+         _G.ESPGen = not _G.ESPGen
+         --print("🔁 สถานะ ESP:", _G.ESPGen and "เปิด" or "ปิด")
+      end
+   end)
+
+   while true do
+      local map = workspace:FindFirstChild("Map")
+      local ingame = map and map:FindFirstChild("Ingame")
+      local gameMap = ingame and ingame:FindFirstChild("Map")
+
+      if gameMap then
+         for _, v in ipairs(gameMap:GetChildren()) do
+            if v:IsA("Model") and v.Name == "Generator" then
+               local progress = v:FindFirstChild("Progress")
+               local highlight = v:FindFirstChild("ESP_Generator")
+
+               -- เงื่อนไขลบ ESP ถ้า generator ซ่อมแล้วหรือปิด ESP
+               if highlight then
+                  if (not _G.ESPGen) or (progress and progress.Value >= 100) then
+                     highlight.Enabled = false
+                  else
+                     highlight.Enabled = true -- เปิดใหม่ถ้าเปิด ESP และยังไม่เสร็จ
+                  end
+               elseif _G.ESPGen and progress and progress.Value < 100 then
+                  -- สร้าง ESP เฉพาะถ้ายังไม่ซ่อม และยังไม่มี
+                  local newHighlight = Instance.new("Highlight")
+                  newHighlight.Name = "ESP_Generator"
+                  newHighlight.Adornee = v
+                  newHighlight.FillColor = Color3.fromRGB(255, 0, 0)
+                  newHighlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+                  newHighlight.FillTransparency = 0.5
+                  newHighlight.OutlineTransparency = 0
+                  newHighlight.Enabled = true
+                  newHighlight.Parent = v
+               end
+            end
+         end
+      end
+
+      task.wait(1)
+   end
+end)
+
+-- ฟังก์ชันสำหรับเพิ่มหรือเปิด Highlight พร้อมกำหนดสี
+local function addOrEnableESP(model, fillColor)
+    if not model then return end
+
+    local highlight = model:FindFirstChild("ESP_Plaayer")
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Plaayer"
+        highlight.FillColor = fillColor
+        highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineTransparency = 0
+        highlight.Adornee = model
+        highlight.Parent = model
+    else
+        highlight.Enabled = true
+        highlight.FillColor = fillColor -- อัปเดตสีหากจำเป็น
+    end
+end
+
+-- ฟังก์ชันสำหรับปิด (ไม่ลบ) Highlight
+local function disableESP(model)
+    local highlight = model and model:FindFirstChild("ESP_Plaayer")
+    if highlight then
+        highlight.Enabled = false
+    end
+end
+
+-- ลูปหลัก
+while _G.ESP do
+    task.wait(0.2)
+
+    local players = workspace:FindFirstChild("Players")
+    if not players then continue end
+
+    local killers = players:FindFirstChild("Killers")
+    local survivors = players:FindFirstChild("Survivors")
+
+    if killers then
+        for _, killer in ipairs(killers:GetChildren()) do
+            if _G.ESP then
+                addOrEnableESP(killer, Color3.fromRGB(255, 0, 0)) -- สีแดงสำหรับ Killers
+            else
+                disableESP(killer)
+            end
+        end
+    end
+
+    if survivors then
+        for _, survivor in ipairs(survivors:GetChildren()) do
+            if _G.ESP then
+                addOrEnableESP(survivor, Color3.fromRGB(0, 255, 0)) -- สีเขียวสำหรับ Survivors
+            else
+                disableESP(survivor)
+            end
+        end
+    end
+end
