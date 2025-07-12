@@ -1,5 +1,3 @@
-local webhookURL = "https://discord.com/api/webhooks/1393412558031032391/VWUAGSolIXadEqwknKe9nHZjxcu6j2yFLeBvtLNsb9avVlDRHoSK_bxzG5WISZ38HnFu"
-
 local function sendWebhook(earnedAmount)
     if not webhookEnabled then return end
 
