@@ -1,0 +1,40 @@
+local webhookURL = "https://discord.com/api/webhooks/1393412558031032391/VWUAGSolIXadEqwknKe9nHZjxcu6j2yFLeBvtLNsb9avVlDRHoSK_bxzG5WISZ38HnFu"
+
+local function sendWebhook(earnedAmount)
+    if not webhookEnabled then return end
+
+    local HttpService = game:GetService("HttpService")
+    local player = game.Players.LocalPlayer
+    local username = player.Name
+    local jobId = game.JobId
+
+    local embed = {
+        ["title"] = "Earnings Report",
+        ["type"] = "rich",
+        ["color"] = 0x00ff00,
+        ["fields"] = {
+            { ["name"] = "Player", ["value"] = username, ["inline"] = true },
+            { ["name"] = "Earnings", ["value"] = "$" .. tostring(earnedAmount), ["inline"] = true },
+            { ["name"] = "Job ID", ["value"] = jobId, ["inline"] = false }
+        },
+        ["footer"] = { ["text"] = "Webhook AutoFarm Log" },
+        ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }
+
+    local payload = HttpService:JSONEncode({
+        ["content"] = "",
+        ["embeds"] = {embed}
+    })
+
+    local requestFunction = syn and syn.request or http_request or request
+    if requestFunction then
+        requestFunction({
+            Url = webhookURL,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = payload
+        })
+    else
+        warn("Your executor does not support HTTP requests.")
+    end
+end
