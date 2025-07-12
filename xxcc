@@ -1,3 +1,7 @@
+local function getWebhookURL()
+    return webhookInput.Text or ""
+end
+
 local function sendWebhook(earnedAmount)
     if not webhookEnabled then return end
 
