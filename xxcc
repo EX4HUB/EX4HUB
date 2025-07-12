@@ -27,9 +27,10 @@ local function sendWebhook(earnedAmount)
     })
 
     local requestFunction = syn and syn.request or http_request or request
-    if requestFunction then
+    local url = getWebhookURL()
+    if requestFunction and url ~= "" then
         requestFunction({
-            Url = webhookURL,
+            Url = url,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
             Body = payload
