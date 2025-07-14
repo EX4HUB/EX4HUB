@@ -148,12 +148,11 @@ end
 -- 🔄 Main ESP Update Loop
 local function updateESP()
     for _, char in pairs(workspace.Players:GetChildren()) do
-    local player = Players:GetPlayerFromCharacter(char)
-        if player == LocalPlayer then continue end
+        local player = Players:GetPlayerFromCharacter(char)
+        if not player or player == LocalPlayer then continue end
         if _G.TeamCheck and player.Team == LocalPlayer.Team then continue end
 
-        local char = player.Character
-        if not char or not char:FindFirstChild("Head") or not char:FindFirstChild("HumanoidRootPart") then
+        if not char:FindFirstChild("Head") or not char:FindFirstChild("HumanoidRootPart") then
             if ESP[player] then
                 for _, v in pairs(ESP[player]) do
                     if typeof(v) == "table" then
