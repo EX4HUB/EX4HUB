@@ -1,0 +1,135 @@
+-- Load UI Library (Lime)
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/lime"))()
+local MarketplaceService = game:GetService("MarketplaceService")
+local placeId = game.PlaceId
+local gameName = "Unknown Game"
+
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(placeId).Name
+end)
+
+local w = Library:Window(gameName)
+
+-- 🧠 Basic Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRoot = character:WaitForChild("HumanoidRootPart")
+
+-- 🔍 Function to find the nearest dead animal
+local function getClosestDeadAnimal()
+    local closestPart = nil
+    local shortestDistance = math.huge
+
+    for _, obj in pairs(workspace:WaitForChild("DeadAnimals"):GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local dist = (humanoidRoot.Position - obj.Position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                closestPart = obj
+            end
+        end
+    end
+
+    return closestPart
+end
+
+-- ✅ Main variables
+getgenv().FreezeAnimalsEnabled = false
+local frozenAnimals = {}
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRoot = character:WaitForChild("HumanoidRootPart")
+
+local RunService = game:GetService("RunService")
+
+-- 🧊 Function to freeze an animal
+local function freezeAnimal(animal)
+    if frozenAnimals[animal] then return end
+
+    local root = animal:FindFirstChild("HumanoidRootPart") or animal.PrimaryPart
+    if not root then return end
+
+    local humanoid = animal:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = 0
+        humanoid.PlatformStand = true
+    end
+
+    for _, d in pairs(animal:GetDescendants()) do
+        if d:IsA("BodyMover") or d:IsA("BodyVelocity") or d:IsA("BodyGyro") then
+            d:Destroy()
+        end
+    end
+
+    frozenAnimals[animal] = root
+end
+
+-- 🔁 Lock position every frame
+RunService.Heartbeat:Connect(function()
+    if not getgenv().FreezeAnimalsEnabled then return end
+
+    for animal, root in pairs(frozenAnimals) do
+        if animal and animal.Parent and root then
+            root.Anchored = false
+            root.CFrame = root.CFrame
+            root.Velocity = Vector3.zero
+            root.RotVelocity = Vector3.zero
+        end
+    end
+end)
+
+-- 🔁 Constantly check for animals in workspace.Animals
+RunService.Stepped:Connect(function()
+    if not getgenv().FreezeAnimalsEnabled then return end
+
+    for _, animal in pairs(workspace:WaitForChild("Animals"):GetChildren()) do
+        if not frozenAnimals[animal] then
+            freezeAnimal(animal)
+        end
+    end
+end)
+
+-- 🔘 Toggle freeze animals
+w:Toggle("Freeze Animals", function(v)
+    getgenv().FreezeAnimalsEnabled = v
+    if v then
+        print("[✅] Freeze enabled")
+    else
+        print("[⛔] Freeze disabled")
+    end
+end)
+
+-- 📍 Teleport to the nearest animal in workspace.Animals
+w:Button("Teleport to Nearest Animal", function()
+    local closestAnimal = nil
+    local shortestDist = math.huge
+
+    for _, animal in pairs(workspace:WaitForChild("Animals"):GetChildren()) do
+        local root = animal:FindFirstChild("HumanoidRootPart") or animal.PrimaryPart
+        if root then
+            local dist = (humanoidRoot.Position - root.Position).Magnitude
+            if dist < shortestDist then
+                shortestDist = dist
+                closestAnimal = root
+            end
+        end
+    end
+
+    if closestAnimal then
+        humanoidRoot.CFrame = closestAnimal.CFrame + Vector3.new(0, 5, 0)
+        print("[✅] Teleported to closest animal")
+    else
+        print("[⚠️] No animals found in workspace.Animals")
+    end
+end)
+
+-- 🔘 Teleport to closest dead animal
+w:Button("Teleport to Nearest Dead Animal", function()
+    local target = getClosestDeadAnimal()
+    if target then
+        humanoidRoot.CFrame = target.CFrame + Vector3.new(0, 5, 0)
+        print("[✅] Teleported to: " .. target:GetFullName())
+    else
+        print("[⚠️] No dead animals found")
+    end
+end)
