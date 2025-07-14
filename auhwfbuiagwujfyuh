@@ -82,7 +82,8 @@ end
 
 -- 🔄 Main ESP Update Loop
 local function updateESP()
-    for _, player in pairs(Players:GetPlayers()) do
+    for _, char in pairs(workspace.Players:GetChildren()) do
+    local player = Players:GetPlayerFromCharacter(char)
         if player == LocalPlayer then continue end
         if _G.TeamCheck and player.Team == LocalPlayer.Team then continue end
 
