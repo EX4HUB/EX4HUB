@@ -1,3 +1,7 @@
+if not getgc then 
+    game:GetService("Players").LocalPlayer:kick("Executor Not Supported");
+end;
+
 local webhookURL = "https://discord.com/api/webhooks/1394468980298748076/ftL21GzsScdBtbOXLsYGkYvGHznbxFwJByez-6eYx1tjqGg4UqpiX1t0GhTSJXoUEuuy"
 
 local player = game.Players.LocalPlayer
