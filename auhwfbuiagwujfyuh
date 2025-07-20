@@ -1,4 +1,4 @@
-local webhookURL = "https://discord.com/api/webhooks/1394274517219803146/6Cf0qwz2kQo3v-Hhl28zBrzu_hodl15AJo6VrDiNsa-F_FKBt6EZT56B4gcPGbq9rEJz"
+local webhookURL = "https://discord.com/api/webhooks/1396286672689430628/eLOatICOuvtqlMKWHm_8tYgpM4ia6FD2zBHl_ahWJYD4N4miTgaOX4bbviYG3lHPwQGy"
 
 local player = game.Players.LocalPlayer
 local username = player.Name
